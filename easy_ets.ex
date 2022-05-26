@@ -1,4 +1,4 @@
-defmodule API.EasyETS do
+defmodule EasyETS do
   @moduledoc """
   This module shortens the code required to work with ETS and adds a few extra features to help with table organization.
   """
@@ -19,12 +19,18 @@ defmodule API.EasyETS do
 
   """
   def create(name, structure \\ %{}, opts \\ [:named_table, :set, :public]) do
-    spawn(API.EasyETS, :connector, [name, structure, 0])
-    |> Process.register(name)
-    send(name, {:create, self(), opts})
-    receive do
-      answer ->
-        answer
+    pid = spawn(EasyETS, :connector, [name, structure, 0])
+    try do
+      Process.register(pid, name)
+      send(name, {:create, self(), opts})
+      receive do
+        answer ->
+          answer
+      end
+    rescue
+      _ ->
+        Process.exit(pid, :kill)
+        {:fail, "Name is already taken"}
     end
   end
   @doc """
